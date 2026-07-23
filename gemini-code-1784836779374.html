@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Math & Markdown Image Generator</title>
+  
+  <!-- KaTeX CSS & JS -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.js"></script>
+  
+  <!-- Marked (Markdown Parser) -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  
+  <!-- html-to-image (PNG Generator) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html-to-image/1.11.11/html-to-image.min.js"></script>
+
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background-color: #f4f6f8; color: #333;
+      display: flex; flex-direction: column; min-height: 100vh;
+    }
+    header {
+      background-color: #24292e; color: #fff;
+      padding: 12px 20px;
+      display: flex; justify-content: space-between; align-items: center;
+      gap: 16px; flex-wrap: wrap;
+    }
+    header h1 { margin: 0; font-size: 18px; white-space: nowrap; }
+    .controls { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+    .control-group { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+    .control-group input[type="range"] { width: 90px; }
+    .control-group span { min-width: 38px; text-align: right; }
+    .btn-group { display: flex; gap: 8px; }
+    button {
+      border: none; padding: 8px 14px; font-size: 13px; font-weight: bold;
+      border-radius: 6px; cursor: pointer; transition: background-color 0.2s;
+    }
+    .btn-copy { background-color: #0366d6; color: white; }
+    .btn-copy:hover { background-color: #0255b3; }
+    .btn-save { background-color: #2ea44f; color: white; }
+    .btn-save:hover { background-color: #2c974b; }
+    
+    .container { display: flex; flex: 1; overflow: hidden; height: calc(100vh - 60px); }
+    .editor-section, .preview-section { flex: 1; display: flex; flex-direction: column; padding: 16px; overflow: hidden; }
+    .editor-section { border-right: 1px solid #e1e4e8; background-color: #ffffff; }
+    label { font-weight: bold; margin-bottom: 8px; font-size: 14px; color: #586069; }
+    
+    /* 簡易入力ツールバー */
+    .quick-toolbar {
+      display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; background: #f1f3f5; padding: 6px; border-radius: 6px;
+    }
+    .quick-btn {
+      background: #ffffff; border: 1px solid #ced4da; padding: 4px 8px; font-size: 12px; border-radius: 4px; font-family: monospace;
+    }
+    .quick-btn:hover { background: #e9ecef; }
+
+    textarea {
+      flex: 1; width: 100%; padding: 12px;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      font-size: 14px; line-height: 1.6;
+      border: 1px solid #d1d5da; border-radius: 6px;
+      resize: none; outline: none;
+    }
+    textarea:focus { border-color: #0366d6; }
+    .preview-section { background-color: #f4f6f8; overflow-y: auto; align-items: center; }
+    
+    #export-card {
+      width: 100%; max-width: 600px;
+      background-color: #ffffff; padding: 32px;
+      border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+      line-height: 1.7; font-size: 16px; word-wrap: break-word;
+      display: flex; flex-direction: column;
+    }
+    .card-content { flex: 1; }
+    .card-content h1, .card-content h2, .card-content h3 {
+      border-bottom: 1px solid #eaecef; padding-bottom: 0.3em;
+      margin-top: 1.2em; margin-bottom: 0.6em;
+    }
+    .card-content h1:first-child, .card-content h2:first-child, .card-content h3:first-child { margin-top: 0; }
+    .card-content p { margin-top: 0; margin-bottom: 1em; }
+    .katex-display { overflow-x: auto; overflow-y: hidden; padding: 4px 0; margin: 1em 0; }
+    
+    .card-footer {
+      margin-top: 24px; padding-top: 12px;
+      border-top: 1px solid #f0f0f0; text-align: right;
+      font-size: 0.75em; color: #888888; font-family: monospace;
+    }
+
+    /* 折りたたみ図鑑エリア */
+    .dictionary-wrapper {
+      background-color: #24292e; color: #fff; border-top: 2px solid #0366d6;
+    }
+    details summary {
+      padding: 12px 20px; font-weight: bold; cursor: pointer; user-select: none; font-size: 14px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    details summary:hover { background-color: #2f363d; }
+    .dictionary-content {
+      padding: 16px 20px; max-height: 300px; overflow-y: auto; background-color: #1b1f23;
+    }
+    .dict-category { margin-bottom: 16px; }
+    .dict-category h4 { margin: 0 0 8px 0; font-size: 13px; color: #58a6ff; border-bottom: 1px solid #30363d; padding-bottom: 4px; }
+    .dict-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+    .dict-btn {
+      background: #21262d; color: #c9d1d9; border: 1px solid #30363d; padding: 6px 10px; border-radius: 4px;
+      font-family: monospace; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 6px;
+    }
+    .dict-btn:hover { background: #30363d; color: #fff; border-color: #8b949e; }
+    .dict-btn span.label { color: #8b949e; font-size: 11px; }
+
+    #toast {
+      position: fixed; bottom: 20px; right: 20px;
+      background: #24292e; color: #fff; padding: 10px 16px;
+      border-radius: 6px; font-size: 14px; opacity: 0;
+      pointer-events: none; transition: opacity 0.3s ease; z-index: 1000;
+    }
+    #toast.show { opacity: 1; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>Math & Markdown Generator</h1>
+    <div class="controls">
+      <div class="control-group">
+        <label for="fontSize" style="color:#fff; margin:0;">文字サイズ:</label>
+        <input type="range" id="fontSize" min="12" max="28" value="16">
+        <span id="fontSizeVal">16px</span>
+      </div>
+      <div class="control-group">
+        <label for="cardWidth" style="color:#fff; margin:0;">カード幅:</label>
+        <input type="range" id="cardWidth" min="300" max="1000" step="20" value="600">
+        <span id="cardWidthVal">600px</span>
+      </div>
+      <div class="control-group">
+        <label for="cardPadding" style="color:#fff; margin:0;">余白:</label>
+        <input type="range" id="cardPadding" min="12" max="64" step="4" value="32">
+        <span id="cardPaddingVal">32px</span>
+      </div>
+      <div class="btn-group">
+        <button class="btn-copy" onclick="copyImage()">画像としてコピー</button>
+        <button class="btn-save" onclick="downloadImage()">PNGで保存</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="editor-section">
+      <label for="editor">入力 (Markdown + LaTeX)</label>
+      
+      <!-- よく使うクイック入力ボタン -->
+      <div class="quick-toolbar">
+        <button class="quick-btn" onclick="insertText('\\frac{', '}{}')">分数 \frac{}{}</button>
+        <button class="quick-btn" onclick="insertText('|', '|')">絶対値 |x|</button>
+        <button class="quick-btn" onclick="insertText('\\sqrt{', '}')">ルート \sqrt{}</button>
+        <button class="quick-btn" onclick="insertText('^{', '}')">累乗 x^{n}</button>
+        <button class="quick-btn" onclick="insertText('_{', '}')">添字 x_{n}</button>
+        <button class="quick-btn" onclick="insertText('\\begin{aligned}\n', '\n\\end{aligned}')">揃え aligned</button>
+      </div>
+
+      <textarea id="editor" placeholder="ここに数式や解説を入力..."></textarea>
+    </div>
+    <div class="preview-section">
+      <label>プレビュー (このカードエリアが画像化されます)</label>
+      <div id="export-card">
+        <div id="card-content" class="card-content"></div>
+        <div class="card-footer">https://hinoko0122.github.io/LaTeX-image/</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 下部：折りたたみ式LaTeX関数図鑑 -->
+  <div class="dictionary-wrapper">
+    <details>
+      <summary>📚 LaTeX関数・記号図鑑（タップで全コマンド一覧を表示＆ワンタップ入力）</summary>
+      <div class="dictionary-content">
+        
+        <div class="dict-category">
+          <h4>よく使う基本関数・環境</h4>
+          <div class="dict-grid">
+            <button class="dict-btn" onclick="insertText('\\frac{', '}{}')">\frac{a}{b} <span class="label">分数</span></button>
+            <button class="dict-btn" onclick="insertText('|', '|')">|x| <span class="label">絶対値</span></button>
+            <button class="dict-btn" onclick="insertText('\\sqrt{', '}')">\sqrt{x} <span class="label">平方根</span></button>
+            <button class="dict-btn" onclick="insertText('\\sqrt[', ']{x}')">\sqrt[n]{x} <span class="label">n乗根</span></button>
+            <button class="dict-btn" onclick="insertText('^{\\circ}', '')">^{\circ} <span class="label">度(°)</span></button>
+            <button class="dict-btn" onclick="insertText('\\begin{aligned}\n', '\n\\end{aligned}')">aligned <span class="label">イコール揃え</span></button>
+            <button class="dict-btn" onclick="insertText('\\begin{pmatrix}\n', '\n\\end{pmatrix}')">pmatrix <span class="label">行列()</span></button>
+          </div>
+        </div>
+
+        <div class="dict-category">
+          <h4>微積分・極限・総和</h4>
+          <div class="dict-grid">
+            <button class="dict-btn" onclick="insertText('\\lim_{', ' \\to \\infty}')">\lim_{x \to \infty} <span class="label">極限</span></button>
+            <button class="dict-btn" onclick="insertText('\\int_{', '}^{} ')">\int_{a}^{b} <span class="label">定積分</span></button>
+            <button class="dict-btn" onclick="insertText('\\sum_{', '}^{} ')">\sum_{k=1}^{n} <span class="label">シグマ</span></button>
+            <button class="dict-btn" onclick="insertText('\\prod_{', '}^{} ')">\prod_{k=1}^{n} <span class="label">パイ(総積)</span></button>
+            <button class="dict-btn" onclick="insertText('\\frac{d}{dx}', '')">\frac{d}{dx} <span class="label">微分</span></button>
+            <button class="dict-btn" onclick="insertText('\\partial', '')">\partial <span class="label">偏微分</span></button>
+          </div>
+        </div>
+
+        <div class="dict-category">
+          <h4>三角関数・対数・ベクトル</h4>
+          <div class="dict-grid">
+            <button class="dict-btn" onclick="insertText('\\sin ', '')">\sin <span class="label">サイン</span></button>
+            <button class="dict-btn" onclick="insertText('\\cos ', '')">\cos <span class="label">コサイン</span></button>
+            <button class="dict-btn" onclick="insertText('\\tan ', '')">\tan <span class="label">タンジェント</span></button>
+            <button class="dict-btn" onclick="insertText('\\log_{', '} ')">\log_{a} <span class="label">対数</span></button>
+            <button class="dict-btn" onclick="insertText('\\ln ', '')">\ln <span class="label">自然対数</span></button>
+            <button class="dict-btn" onclick="insertText('\\vec{', '}')">\vec{a} <span class="label">ベクトル</span></button>
+            <button class="dict-btn" onclick="insertText('\\overrightarrow{', '}')">\overrightarrow{AB} <span class="label">長ベクトル</span></button>
+          </div>
+        </div>
+
+        <div class="dict-category">
+          <h4>集合・論理・関係記号</h4>
+          <div class="dict-grid">
+            <button class="dict-btn" onclick="insertText('\\in', '')">\in <span class="label">属する</span></button>
+            <button class="dict-btn" onclick="insertText('\\subset', '')">\subset <span class="label">部分集合</span></button>
+            <button class="dict-btn" onclick="insertText('\\cap', '')">\cap <span class="label">かつ(積集合)</span></button>
+            <button class="dict-btn" onclick="insertText('\\cup', '')">\cup <span class="label">または(和集合)</span></button>
+            <button class="dict-btn" onclick="insertText('\\emptyset', '')">\emptyset <span class="label">空集合</span></button>
+            <button class="dict-btn" onclick="insertText('\\implies', '')">\implies <span class="label">ならば</span></button>
+            <button class="dict-btn" onclick="insertText('\\iff', '')">\iff <span class="label">同値</span></button>
+            <button class="dict-btn" onclick="insertText('\\leqq', '')">\leqq <span class="label">小なりイコール</span></button>
+            <button class="dict-btn" onclick="insertText('\\geqq', '')">\geqq <span class="label">大なりイコール</span></button>
+            <button class="dict-btn" onclick="insertText('\\neq', '')">\neq <span class="label">ノットイコール</span></button>
+            <button class="dict-btn" onclick="insertText('\\approx', '')">\approx <span class="label">近似</span></button>
+            <button class="dict-btn" onclick="insertText('\\equiv', '')">\equiv <span class="label">合同</span></button>
+          </div>
+        </div>
+
+        <div class="dict-category">
+          <h4>ギリシャ文字</h4>
+          <div class="dict-grid">
+            <button class="dict-btn" onclick="insertText('\\alpha', '')">\alpha</button>
+            <button class="dict-btn" onclick="insertText('\\beta', '')">\beta</button>
+            <button class="dict-btn" onclick="insertText('\\gamma', '')">\gamma</button>
+            <button class="dict-btn" onclick="insertText('\\theta', '')">\theta</button>
+            <button class="dict-btn" onclick="insertText('\\pi', '')">\pi</button>
+            <button class="dict-btn" onclick="insertText('\\omega', '')">\omega</button>
+            <button class="dict-btn" onclick="insertText('\\Delta', '')">\Delta</button>
+            <button class="dict-btn" onclick="insertText('\\Sigma', '')">\Sigma</button>
+            <button class="dict-btn" onclick="insertText('\\Omega', '')">\Omega</button>
+          </div>
+        </div>
+
+      </div>
+    </details>
+  </div>
+
+  <div id="toast">クリップボードに画像をコピーしました！</div>
+
+  <script>
+    const defaultText = `### 問題の解説
+
+二次方程式 $x^2 - 4x + 3 = 0$ を解きなさい。
+
+【解答】
+因数分解を利用して解きます。
+
+$$
+\\begin{aligned}
+x^2 - 4x + 3 &= 0 \\\\
+(x - 1)(x - 3) &= 0 \\\\
+x &= 1, 3
+\\end{aligned}
+$$
+
+したがって、解は **$x = 1, 3$** となります。`;
+
+    const editor = document.getElementById('editor');
+    const previewCard = document.getElementById('export-card');
+    const cardContent = document.getElementById('card-content');
+    const toast = document.getElementById('toast');
+
+    const fontSizeInput = document.getElementById('fontSize');
+    const cardWidthInput = document.getElementById('cardWidth');
+    const cardPaddingInput = document.getElementById('cardPadding');
+
+    const fontSizeVal = document.getElementById('fontSizeVal');
+    const cardWidthVal = document.getElementById('cardWidthVal');
+    const cardPaddingVal = document.getElementById('cardPaddingVal');
+
+    editor.value = defaultText;
+
+    function updateStyles() {
+      const fontSize = fontSizeInput.value + 'px';
+      const cardWidth = cardWidthInput.value + 'px';
+      const cardPadding = cardPaddingInput.value + 'px';
+
+      previewCard.style.fontSize = fontSize;
+      previewCard.style.maxWidth = cardWidth;
+      previewCard.style.padding = cardPadding;
+
+      fontSizeVal.textContent = fontSize;
+      cardWidthVal.textContent = cardWidth;
+      cardPaddingVal.textContent = cardPadding;
+    }
+
+    fontSizeInput.addEventListener('input', updateStyles);
+    cardWidthInput.addEventListener('input', updateStyles);
+    cardPaddingInput.addEventListener('input', updateStyles);
+
+    // テキストエリアのカーソル位置に文字を挿入する関数
+    function insertText(startTag, endTag = '') {
+      const start = editor.selectionStart;
+      const end = editor.selectionEnd;
+      const text = editor.value;
+      const selected = text.substring(start, end);
+      const replacement = startTag + selected + endTag;
+
+      editor.value = text.substring(0, start) + replacement + text.substring(end);
+      editor.focus();
+      editor.selectionStart = start + startTag.length;
+      editor.selectionEnd = start + startTag.length + selected.length;
+
+      updatePreview();
+    }
+
+    // Markdown & KaTeX レンダリング処理
+    function renderCustomMarkdown(src) {
+      const mathItems = [];
+
+      // 1. $$ ... $$ (ブロック数式)
+      let text = src.replace(/\$\$([\s\S]+?)\$\$/g, (_, math) => {
+        try {
+          const html = katex.renderToString(math, { displayMode: true, throwOnError: false });
+          mathItems.push(html);
+        } catch(e) {
+          mathItems.push(math);
+        }
+        return `XMATHBLOCKX${mathItems.length - 1}XMATHBLOCKX`;
+      });
+
+      // 2. $ ... $ (インライン数式)
+      text = text.replace(/\$([^\$\n]+?)\$/g, (_, math) => {
+        try {
+          const html = katex.renderToString(math, { displayMode: false, throwOnError: false });
+          mathItems.push(html);
+        } catch(e) {
+          mathItems.push(math);
+        }
+        return `XMATHINLINEX${mathItems.length - 1}XMATHINLINEX`;
+      });
+
+      // 3. Markdown変換
+      let html = marked.parse(text, { breaks: true });
+
+      // 4. 数式HTMLの復元
+      html = html.replace(/XMATHBLOCKX(\d+)XMATHBLOCKX/g, (_, id) => mathItems[id]);
+      html = html.replace(/XMATHINLINEX(\d+)XMATHINLINEX/g, (_, id) => mathItems[id]);
+
+      return html;
+    }
+
+    function updatePreview() {
+      cardContent.innerHTML = renderCustomMarkdown(editor.value);
+    }
+
+    editor.addEventListener('input', updatePreview);
+
+    window.addEventListener('DOMContentLoaded', () => {
+      updateStyles();
+      updatePreview();
+    });
+
+    function showToast(message) {
+      toast.textContent = message;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2500);
+    }
+
+    function generateFileName() {
+      const now = new Date();
+      const pad = (n) => String(n).padStart(2, '0');
+      const yyyy = now.getFullYear();
+      const mm = pad(now.getMonth() + 1);
+      const dd = pad(now.getDate());
+      const hh = pad(now.getHours());
+      const min = pad(now.getMinutes());
+      const ss = pad(now.getSeconds());
+      
+      return `LaTeXimage_${yyyy}${mm}${dd}_${hh}${min}${ss}.png`;
+    }
+
+    function copyImage() {
+      const node = document.getElementById('export-card');
+      htmlToImage.toBlob(node, { pixelRatio: 2 })
+        .then(function (blob) {
+          if (!blob) return alert('画像の生成に失敗しました。');
+          const item = new ClipboardItem({ 'image/png': blob });
+          navigator.clipboard.write([item]).then(() => showToast('クリップボードに画像をコピーしました！'));
+        })
+        .catch(() => alert('画像の生成に失敗しました。'));
+    }
+
+    function downloadImage() {
+      const node = document.getElementById('export-card');
+      const filename = generateFileName();
+      
+      htmlToImage.toPng(node, { pixelRatio: 2 })
+        .then(function (dataUrl) {
+          const link = document.createElement('a');
+          link.download = filename;
+          link.href = dataUrl;
+          link.click();
+        })
+        .catch(() => alert('画像の生成に失敗しました。'));
+    }
+  </script>
+</body>
+</html>
