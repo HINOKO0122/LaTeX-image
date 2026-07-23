@@ -44,13 +44,18 @@
     .btn-save { background-color: #2ea44f; color: white; }
     .btn-save:hover { background-color: #2c974b; }
     
-    .container { display: flex; flex: 1; overflow: hidden; height: calc(100vh - 60px); }
-    .editor-section, .preview-section { flex: 1; display: flex; flex-direction: column; padding: 16px; overflow: hidden; }
-    .editor-section { border-right: 1px solid #e1e4e8; background-color: #ffffff; }
+    /* メインコンテナ：画面高固定を解除し、全体スクロールを許容 */
+    .container {
+      display: flex; flex: 1; padding: 16px; gap: 16px;
+      max-width: 1400px; width: 100%; margin: 0 auto;
+    }
+    .editor-section, .preview-section {
+      flex: 1; display: flex; flex-direction: column;
+    }
     label { font-weight: bold; margin-bottom: 8px; font-size: 14px; color: #586069; }
     
     .quick-toolbar {
-      display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; background: #f1f3f5; padding: 6px; border-radius: 6px;
+      display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; background: #eef1f5; padding: 6px; border-radius: 6px;
     }
     .quick-btn {
       background: #ffffff; border: 1px solid #ced4da; padding: 4px 8px; font-size: 12px; border-radius: 4px; font-family: monospace;
@@ -58,14 +63,14 @@
     .quick-btn:hover { background: #e9ecef; }
 
     textarea {
-      flex: 1; width: 100%; padding: 12px;
+      flex: 1; min-height: 400px; width: 100%; padding: 12px;
       font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
       font-size: 14px; line-height: 1.6;
       border: 1px solid #d1d5da; border-radius: 6px;
-      resize: none; outline: none;
+      resize: vertical; outline: none;
     }
     textarea:focus { border-color: #0366d6; }
-    .preview-section { background-color: #f4f6f8; overflow-y: auto; align-items: center; }
+    .preview-section { align-items: center; }
     
     #export-card {
       width: 100%; max-width: 600px;
@@ -89,26 +94,30 @@
       font-size: 0.75em; color: #888888; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     }
 
-    .dictionary-wrapper {
-      background-color: #24292e; color: #fff; border-top: 2px solid #0366d6;
+    /* 折りたたみガイドエリア（スクロール重複解消） */
+    .guide-wrapper {
+      background-color: #1b1f23; color: #e1e4e8; border-top: 3px solid #0366d6; margin-top: 20px;
     }
     details summary {
-      padding: 12px 20px; font-weight: bold; cursor: pointer; user-select: none; font-size: 14px;
-      display: flex; justify-content: space-between; align-items: center;
+      padding: 14px 24px; font-weight: bold; cursor: pointer; user-select: none; font-size: 15px;
+      background-color: #24292e; color: #fff; display: flex; justify-content: space-between; align-items: center;
     }
     details summary:hover { background-color: #2f363d; }
-    .dictionary-content {
-      padding: 16px 20px; max-height: 300px; overflow-y: auto; background-color: #1b1f23;
+    
+    /* 内部スクロール(max-height)を削除し自然なページ縦伸びに */
+    .guide-content {
+      padding: 24px; background-color: #1b1f23; line-height: 1.6; font-size: 14px;
     }
-    .dict-category { margin-bottom: 16px; }
-    .dict-category h4 { margin: 0 0 8px 0; font-size: 13px; color: #58a6ff; border-bottom: 1px solid #30363d; padding-bottom: 4px; }
-    .dict-grid { display: flex; flex-wrap: wrap; gap: 6px; }
-    .dict-btn {
-      background: #21262d; color: #c9d1d9; border: 1px solid #30363d; padding: 6px 10px; border-radius: 4px;
-      font-family: monospace; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 6px;
+    .guide-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-top: 12px;
     }
-    .dict-btn:hover { background: #30363d; color: #fff; border-color: #8b949e; }
-    .dict-btn span.label { color: #8b949e; font-size: 11px; }
+    .guide-card {
+      background: #21262d; border: 1px solid #30363d; border-radius: 8px; padding: 16px;
+    }
+    .guide-card h4 { margin: 0 0 10px 0; font-size: 14px; color: #58a6ff; border-bottom: 1px solid #30363d; padding-bottom: 6px; }
+    .guide-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .guide-table td { padding: 6px 4px; border-bottom: 1px solid #2d333b; }
+    .guide-table code { background: #2d333b; color: #f0883e; padding: 2px 6px; border-radius: 4px; font-family: monospace; }
 
     #toast {
       position: fixed; bottom: 20px; right: 20px;
@@ -117,6 +126,10 @@
       pointer-events: none; transition: opacity 0.3s ease; z-index: 1000;
     }
     #toast.show { opacity: 1; }
+
+    @media (max-width: 800px) {
+      .container { flex-direction: column; }
+    }
   </style>
 </head>
 <body>
@@ -151,16 +164,17 @@
       <label for="editor">入力 (Markdown + LaTeX)</label>
       
       <div class="quick-toolbar">
-        <button class="quick-btn" onclick="insertText('\\frac{', '}{}')">分数 \frac{}{}</button>
-        <button class="quick-btn" onclick="insertText('|', '|')">絶対値 |x|</button>
-        <button class="quick-btn" onclick="insertText('\\sqrt{', '}')">ルート \sqrt{}</button>
-        <button class="quick-btn" onclick="insertText('^{', '}')">累乗 x^{n}</button>
-        <button class="quick-btn" onclick="insertText('_{', '}')">添字 x_{n}</button>
-        <button class="quick-btn" onclick="insertText('\\begin{aligned}\n', '\n\\end{aligned}')">揃え aligned</button>
+        <button class="quick-btn" onclick="insertText('\\frac{', '}{}')">分数</button>
+        <button class="quick-btn" onclick="insertText('|', '|')">絶対値</button>
+        <button class="quick-btn" onclick="insertText('\\sqrt{', '}')">ルート</button>
+        <button class="quick-btn" onclick="insertText('^{', '}')">累乗</button>
+        <button class="quick-btn" onclick="insertText('_{', '}')">添字</button>
+        <button class="quick-btn" onclick="insertText('\\begin{aligned}\n', '\n\\end{aligned}')">イコール揃え</button>
       </div>
 
-      <textarea id="editor" placeholder="ここに数式や解説を入力..."></textarea>
+      <textarea id="editor" placeholder="ここに Markdown や LaTeX を入力..."></textarea>
     </div>
+    
     <div class="preview-section">
       <label>プレビュー (このカードエリアが画像化されます)</label>
       <div id="export-card">
@@ -170,80 +184,67 @@
     </div>
   </div>
 
-  <div class="dictionary-wrapper">
+  <!-- 下部：書き方マニュアル・構文ガイド -->
+  <div class="guide-wrapper">
     <details>
-      <summary>📚 LaTeX関数・記号図鑑（タップで全コマンド一覧を表示＆ワンタップ入力）</summary>
-      <div class="dictionary-content">
+      <summary>📖 書き方ヘルプ & LaTeX構文ガイド（タップで開閉）</summary>
+      <div class="guide-content">
         
-        <div class="dict-category">
-          <h4>よく使う基本関数・環境</h4>
-          <div class="dict-grid">
-            <button class="dict-btn" onclick="insertText('\\frac{', '}{}')">\frac{a}{b} <span class="label">分数</span></button>
-            <button class="dict-btn" onclick="insertText('|', '|')">|x| <span class="label">絶対値</span></button>
-            <button class="dict-btn" onclick="insertText('\\sqrt{', '}')">\sqrt{x} <span class="label">平方根</span></button>
-            <button class="dict-btn" onclick="insertText('\\sqrt[', ']{x}')">\sqrt[n]{x} <span class="label">n乗根</span></button>
-            <button class="dict-btn" onclick="insertText('^{\\circ}', '')">^{\circ} <span class="label">度(°)</span></button>
-            <button class="dict-btn" onclick="insertText('\\begin{aligned}\n', '\n\\end{aligned}')">aligned <span class="label">イコール揃え</span></button>
-            <button class="dict-btn" onclick="insertText('\\begin{pmatrix}\n', '\n\\end{pmatrix}')">pmatrix <span class="label">行列()</span></button>
+        <div class="guide-grid">
+          
+          <!-- タイトル・見出しの説明 -->
+          <div class="guide-card">
+            <h4>📌 タイトル・見出しの書き方</h4>
+            <p style="margin-top:0; color:#8b949e;">行頭に <code>#</code> を付けると見出し（タイトル）になります。</p>
+            <table class="guide-table">
+              <tr><td><code># タイトル</code></td><td>大見出し（H1）</td></tr>
+              <tr><td><code>## セクション</code></td><td>中見出し（H2）</td></tr>
+              <tr><td><code>### 問題の解説</code></td><td>小見出し（下線付き）</td></tr>
+            </table>
           </div>
-        </div>
 
-        <div class="dict-category">
-          <h4>微積分・極限・総和</h4>
-          <div class="dict-grid">
-            <button class="dict-btn" onclick="insertText('\\lim_{', ' \\to \\infty}')">\lim_{x \to \infty} <span class="label">極限</span></button>
-            <button class="dict-btn" onclick="insertText('\\int_{', '}^{} ')">\int_{a}^{b} <span class="label">定積分</span></button>
-            <button class="dict-btn" onclick="insertText('\\sum_{', '}^{} ')">\sum_{k=1}^{n} <span class="label">シグマ</span></button>
-            <button class="dict-btn" onclick="insertText('\\prod_{', '}^{} ')">\prod_{k=1}^{n} <span class="label">パイ(総積)</span></button>
-            <button class="dict-btn" onclick="insertText('\\frac{d}{dx}', '')">\frac{d}{dx} <span class="label">微分</span></button>
-            <button class="dict-btn" onclick="insertText('\\partial', '')">\partial <span class="label">偏微分</span></button>
+          <!-- 数式の基本ルール -->
+          <div class="guide-card">
+            <h4>📐 数式の挟み方</h4>
+            <table class="guide-table">
+              <tr>
+                <td><code>$x^2 + y^2 = 1$</code></td>
+                <td><strong>文章中（インライン）</strong><br>文中に埋め込む数式</td>
+              </tr>
+              <tr>
+                <td><code>$$ \frac{a}{b} $$</code></td>
+                <td><strong>独立行（ブロック）</strong><br>中央に大きく表示</td>
+              </tr>
+            </table>
           </div>
-        </div>
 
-        <div class="dict-category">
-          <h4>三角関数・対数・ベクトル</h4>
-          <div class="dict-grid">
-            <button class="dict-btn" onclick="insertText('\\sin ', '')">\sin <span class="label">サイン</span></button>
-            <button class="dict-btn" onclick="insertText('\\cos ', '')">\cos <span class="label">コサイン</span></button>
-            <button class="dict-btn" onclick="insertText('\\tan ', '')">\tan <span class="label">タンジェント</span></button>
-            <button class="dict-btn" onclick="insertText('\\log_{', '} ')">\log_{a} <span class="label">対数</span></button>
-            <button class="dict-btn" onclick="insertText('\\ln ', '')">\ln <span class="label">自然対数</span></button>
-            <button class="dict-btn" onclick="insertText('\\vec{', '}')">\vec{a} <span class="label">ベクトル</span></button>
-            <button class="dict-btn" onclick="insertText('\\overrightarrow{', '}')">\overrightarrow{AB} <span class="label">長ベクトル</span></button>
+          <!-- 強調・装飾 -->
+          <div class="guide-card">
+            <h4>✍️ 文字の装飾</h4>
+            <table class="guide-table">
+              <tr><td><code>**太字**</code></td><td><strong>太字テキスト</strong></td></tr>
+              <tr><td><code>*斜体*</code></td><td><em>斜体テキスト</em></td></tr>
+              <tr><td><code>【補足】</code></td><td>普通の括弧・箇条書き</td></tr>
+            </table>
           </div>
-        </div>
 
-        <div class="dict-category">
-          <h4>集合・論理・関係記号</h4>
-          <div class="dict-grid">
-            <button class="dict-btn" onclick="insertText('\\in', '')">\in <span class="label">属する</span></button>
-            <button class="dict-btn" onclick="insertText('\\subset', '')">\subset <span class="label">部分集合</span></button>
-            <button class="dict-btn" onclick="insertText('\\cap', '')">\cap <span class="label">かつ(積集合)</span></button>
-            <button class="dict-btn" onclick="insertText('\\cup', '')">\cup <span class="label">または(和集合)</span></button>
-            <button class="dict-btn" onclick="insertText('\\emptyset', '')">\emptyset <span class="label">空集合</span></button>
-            <button class="dict-btn" onclick="insertText('\\implies', '')">\implies <span class="label">ならば</span></button>
-            <button class="dict-btn" onclick="insertText('\\iff', '')">\iff <span class="label">同値</span></button>
-            <button class="dict-btn" onclick="insertText('\\leqq', '')">\leqq <span class="label">小なりイコール</span></button>
-            <button class="dict-btn" onclick="insertText('\\geqq', '')">\geqq <span class="label">大なりイコール</span></button>
-            <button class="dict-btn" onclick="insertText('\\neq', '')">\neq <span class="label">ノットイコール</span></button>
-            <button class="dict-btn" onclick="insertText('\\approx', '')">\approx <span class="label">近似</span></button>
-            <button class="dict-btn" onclick="insertText('\\equiv', '')">\equiv <span class="label">合同</span></button>
+          <!-- よく使う数式コマンド -->
+          <div class="guide-card" style="grid-column: span 1 / -1;">
+            <h4>🧮 よく使うLaTeXコマンド一覧</h4>
+            <table class="guide-table" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px;">
+              <div><code>\frac{a}{b}</code> → 分数 $\frac{a}{b}$</div>
+              <div><code>\sqrt{x}</code> → 平方根 $\sqrt{x}$</div>
+              <div><code>x^{n}</code> → 累乗 $x^n$</div>
+              <div><code>x_{n}</code> → 添字 $x_n$</div>
+              <div><code>\int_{a}^{b}</code> → 積分 $\int_a^b$</div>
+              <div><code>\sum_{k=1}^{n}</code> → シグマ $\sum_{k=1}^n$</div>
+              <div><code>\lim_{x \to 0}</code> → 極限 $\lim_{x \to 0}$</div>
+              <div><code>\vec{a}</code> → ベクトル $\vec{a}$</div>
+              <div><code>\vec{a} \cdot \vec{b}</code> → 内積 $\vec{a} \cdot \vec{b}$</div>
+              <div><code>\leqq</code> / <code>\geqq</code> → $\leqq$, $\geqq$</div>
+            </table>
           </div>
-        </div>
 
-        <div class="dict-category">
-          <h4>ギリシャ文字</h4>
-          <div class="dict-grid">
-            <button class="dict-btn" onclick="insertText('\\alpha', '')">\alpha</button>
-            <button class="dict-btn" onclick="insertText('\\beta', '')">\beta</button>
-            <button class="dict-btn" onclick="insertText('\\gamma', '')">\gamma</button>
-            <button class="dict-btn" onclick="insertText('\\theta', '')">\theta</button>
-            <button class="dict-btn" onclick="insertText('\\pi', '')">\pi</button>
-            <button class="dict-btn" onclick="insertText('\\omega', '')">\omega</button>
-            <button class="dict-btn" onclick="insertText('\\Delta', '')">\Delta</button>
-            <button class="dict-btn" onclick="insertText('\\Sigma', '')">\Sigma</button>
-            <button class="dict-btn" onclick="insertText('\\Omega', '')">\Omega</button>
-          </div>
         </div>
 
       </div>
@@ -253,22 +254,16 @@
   <div id="toast">クリップボードに画像をコピーしました！</div>
 
   <script>
-    const defaultText = `### 問題の解説
+    const defaultText = `### バーゼル問題
 
-二次方程式 $x^2 - 4x + 3 = 0$ を解きなさい。
-
-【解答】
-因数分解を利用して解きます。
+自然数の平方の逆数和に関する有名な問題。
 
 $$
-\\begin{aligned}
-x^2 - 4x + 3 &= 0 \\\\
-(x - 1)(x - 3) &= 0 \\\\
-x &= 1, 3
-\\end{aligned}
+\\sum_{k=1}^{\\infty} \\frac{1}{k^2} = \\frac{\\pi^2}{6}
 $$
 
-したがって、解は **$x = 1, 3$** となります。`;
+**解説:**
+1735年にオイラーによって解決されました。`;
 
     const editor = document.getElementById('editor');
     const previewCard = document.getElementById('export-card');
