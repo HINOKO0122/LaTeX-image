@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Math & Markdown Image Generator</title>
+  <title>LaTeX Image</title>
   
   <!-- KaTeX CSS & JS -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css">
@@ -139,7 +139,7 @@
 <body>
 
   <header>
-    <h1>Math & Markdown Generator</h1>
+    <h1>LaTeX画像生成</h1>
     <div class="controls">
       <div class="control-group">
         <label for="fontSize" style="color:#fff; margin:0;">文字サイズ:</label>
@@ -147,7 +147,7 @@
         <span id="fontSizeVal">16px</span>
       </div>
       <div class="control-group">
-        <label for="cardWidth" style="color:#fff; margin:0;">カード幅:</label>
+        <label for="cardWidth" style="color:#fff; margin:0;">カード横幅:</label>
         <input type="range" id="cardWidth" min="300" max="1000" step="20" value="600">
         <span id="cardWidthVal">600px</span>
       </div>
@@ -189,8 +189,8 @@
   </div>
 
   <div class="guide-wrapper">
-    <details>
-      <summary>📖 書き方ヘルプ & LaTeX構文ガイド（タップで開閉）</summary>
+    <details open>
+      <summary>📖 書き方ヘルプ & LaTeX構文ガイド</summary>
       <div class="guide-content">
         
         <div class="guide-grid">
@@ -224,23 +224,25 @@
             <table class="guide-table">
               <tr><td><code>**太字**</code></td><td><strong>太字テキスト</strong></td></tr>
               <tr><td><code>*斜体*</code></td><td><em>斜体テキスト</em></td></tr>
-              <tr><td><code>【補足】</code></td><td>普通の括弧・箇条書き</td></tr>
             </table>
           </div>
 
           <div class="guide-card" style="grid-column: span 1 / -1;">
             <h4>🧮 よく使うLaTeXコマンド一覧</h4>
             <table class="guide-table" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px;">
-              <div><code>\frac{a}{b}</code> → 分数 $\frac{a}{b}$</div>
-              <div><code>\sqrt{x}</code> → 平方根 $\sqrt{x}$</div>
-              <div><code>x^{n}</code> → 累乗 $x^n$</div>
-              <div><code>x_{n}</code> → 添字 $x_n$</div>
-              <div><code>\int_{a}^{b}</code> → 積分 $\int_a^b$</div>
-              <div><code>\sum_{k=1}^{n}</code> → シグマ $\sum_{k=1}^n$</div>
-              <div><code>\lim_{x \to 0}</code> → 極限 $\lim_{x \to 0}$</div>
-              <div><code>\vec{a}</code> → ベクトル $\vec{a}$</div>
-              <div><code>\vec{a} \cdot \vec{b}</code> → 内積 $\vec{a} \cdot \vec{b}$</div>
-              <div><code>\leqq</code> / <code>\geqq</code> → $\leqq$, $\geqq$</div>
+              <div><code>\frac{a}{b}</code> → 分数</div>
+              <div><code>\sqrt{x}</code> → 平方根</div>
+              <div><code>x^{n}</code> → 累乗</div>
+              <div><code>x_{n}</code> → 添字</div>
+              <div><code>\abs{x}</code> → 絶対値</div>
+              <div><code>\int_{a}^{b}</code> → 積分</div>
+              <div><code>\sum_{k=1}^{n}</code> → シグマ</div>
+              <div><code>\lim_{x \to 0}</code> → 極限</div>
+              <div><code>\vec{a}</code> → ベクトル</div>
+              <div><code>\vec{a} \cdot \vec{b}</code> → 内積</div>
+              <div><code>\leqq</code> / <code>\geqq</code> → ≦ / ≧</div>
+              <div><code>\le</code> / <code>\ge</code> → ≤ / ≥</div>
+              <div><code>\lt</code> / <code>\gt</code> → < / ></div>
             </table>
           </div>
 
