@@ -12,8 +12,8 @@
   <!-- Marked (Markdown Parser) -->
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   
-  <!-- html-to-image (PNG Generator) -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html-to-image/1.11.11/html-to-image.min.js"></script>
+  <!-- html2canvas (より確実なCanvas化ライブラリ) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
   <style>
     * { box-sizing: border-box; }
@@ -44,7 +44,6 @@
     .btn-save { background-color: #2ea44f; color: white; }
     .btn-save:hover { background-color: #2c974b; }
     
-    /* メインコンテナ：画面高固定を解除し、全体スクロールを許容 */
     .container {
       display: flex; flex: 1; padding: 16px; gap: 16px;
       max-width: 1400px; width: 100%; margin: 0 auto;
@@ -78,6 +77,7 @@
       border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
       line-height: 1.7; font-size: 16px; word-wrap: break-word;
       display: flex; flex-direction: column;
+      container-type: inline-size;
     }
     .card-content { flex: 1; }
     .card-content h1, .card-content h2, .card-content h3 {
@@ -90,11 +90,16 @@
     
     .card-footer {
       margin-top: 24px; padding-top: 12px;
-      border-top: 1px solid #f0f0f0; text-align: right;
-      font-size: 0.75em; color: #888888; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      border-top: 1px solid #f0f0f0;
+      text-align: right;
+      color: #888888;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      white-space: nowrap;
+      overflow: hidden;
+      font-size: clamp(10px, 3.8cqi, 28px);
+      letter-spacing: 0.02em;
     }
 
-    /* 折りたたみガイドエリア（スクロール重複解消） */
     .guide-wrapper {
       background-color: #1b1f23; color: #e1e4e8; border-top: 3px solid #0366d6; margin-top: 20px;
     }
@@ -104,7 +109,6 @@
     }
     details summary:hover { background-color: #2f363d; }
     
-    /* 内部スクロール(max-height)を削除し自然なページ縦伸びに */
     .guide-content {
       padding: 24px; background-color: #1b1f23; line-height: 1.6; font-size: 14px;
     }
@@ -184,7 +188,6 @@
     </div>
   </div>
 
-  <!-- 下部：書き方マニュアル・構文ガイド -->
   <div class="guide-wrapper">
     <details>
       <summary>📖 書き方ヘルプ & LaTeX構文ガイド（タップで開閉）</summary>
@@ -192,7 +195,6 @@
         
         <div class="guide-grid">
           
-          <!-- タイトル・見出しの説明 -->
           <div class="guide-card">
             <h4>📌 タイトル・見出しの書き方</h4>
             <p style="margin-top:0; color:#8b949e;">行頭に <code>#</code> を付けると見出し（タイトル）になります。</p>
@@ -203,7 +205,6 @@
             </table>
           </div>
 
-          <!-- 数式の基本ルール -->
           <div class="guide-card">
             <h4>📐 数式の挟み方</h4>
             <table class="guide-table">
@@ -218,7 +219,6 @@
             </table>
           </div>
 
-          <!-- 強調・装飾 -->
           <div class="guide-card">
             <h4>✍️ 文字の装飾</h4>
             <table class="guide-table">
@@ -228,7 +228,6 @@
             </table>
           </div>
 
-          <!-- よく使う数式コマンド -->
           <div class="guide-card" style="grid-column: span 1 / -1;">
             <h4>🧮 よく使うLaTeXコマンド一覧</h4>
             <table class="guide-table" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px;">
@@ -374,21 +373,29 @@ $$
       return `LaTeXimage_${yyyy}${mm}${dd}_${hh}${min}${ss}.png`;
     }
 
-    async function getExportNode() {
+    // html2canvas を使用して高精度のCanvasを生成
+    async function createCardCanvas() {
       if (document.fonts && document.fonts.ready) {
         await document.fonts.ready;
       }
-      return document.getElementById('export-card');
+      const node = document.getElementById('export-card');
+      return await html2canvas(node, {
+        scale: 2,               // 解像度2倍（キレイに保存）
+        useCORS: true,           // Webフォント読み込み許可
+        logging: false,
+        backgroundColor: '#ffffff'
+      });
     }
 
     async function copyImage() {
       try {
-        const node = await getExportNode();
-        const blob = await htmlToImage.toBlob(node, { pixelRatio: 2, cacheBust: true });
-        if (!blob) return alert('画像の生成に失敗しました。');
-        const item = new ClipboardItem({ 'image/png': blob });
-        await navigator.clipboard.write([item]);
-        showToast('クリップボードに画像をコピーしました！');
+        const canvas = await createCardCanvas();
+        canvas.toBlob(async (blob) => {
+          if (!blob) return alert('画像の生成に失敗しました。');
+          const item = new ClipboardItem({ 'image/png': blob });
+          await navigator.clipboard.write([item]);
+          showToast('クリップボードに画像をコピーしました！');
+        }, 'image/png');
       } catch (err) {
         alert('画像の生成に失敗しました。');
       }
@@ -396,11 +403,10 @@ $$
 
     async function downloadImage() {
       try {
-        const node = await getExportNode();
-        const filename = generateFileName();
-        const dataUrl = await htmlToImage.toPng(node, { pixelRatio: 2, cacheBust: true });
+        const canvas = await createCardCanvas();
+        const dataUrl = canvas.toDataURL('image/png');
         const link = document.createElement('a');
-        link.download = filename;
+        link.download = generateFileName();
         link.href = dataUrl;
         link.click();
       } catch (err) {
